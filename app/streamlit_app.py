@@ -76,6 +76,7 @@ st.dataframe(results_df.sort_values(by="Accuracy", ascending=False))
 
 st.markdown("## 📈 Accuracy Comparison Chart")
 
+# ✅ Use pivot (BEST + simplest + no NameError)
 pivot_df = results_df.pivot(index="Model", columns="Scaler", values="Accuracy")
 
 st.bar_chart(pivot_df)
