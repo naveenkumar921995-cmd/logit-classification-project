@@ -5,14 +5,17 @@ import streamlit as st
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, Normalizer
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix
 
-st.set_page_config(page_title="Model Comparison App", layout="wide")
+st.set_page_config(page_title="ML Model Comparison App", layout="wide")
 
-st.title("🚀 ML Model Comparison Dashboard")
-st.markdown("### Compare Scaling Techniques with Logistic Regression")
+st.title("🚀 Advanced ML Model Comparison Dashboard")
+st.markdown("### Compare Multiple Models + Upload Your Own Data")
 
-# ================= LOAD DATA =================
+# ================= LOAD DEFAULT DATA =================
 dataset = pd.read_csv("data/logit_classification.csv")
 
 X = dataset.iloc[:, [2, 3]].values
@@ -22,118 +25,138 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.20, random_state=0
 )
 
-# ================= TRAIN MODELS =================
+# ================= SCALERS =================
+scalers = {
+    "StandardScaler": StandardScaler(),
+    "Normalizer": Normalizer(),
+    "No Scaling": None
+}
 
-# 1️⃣ StandardScaler Model
-sc1 = StandardScaler()
-X_train_sc = sc1.fit_transform(X_train)
-X_test_sc = sc1.transform(X_test)
+# ================= MODELS =================
+models = {
+    "Logistic Regression": LogisticRegression(max_iter=1000),
+    "SVM": SVC(),
+    "Random Forest": RandomForestClassifier(),
+    "KNN": KNeighborsClassifier()
+}
 
-model_sc = LogisticRegression(max_iter=1000)
-model_sc.fit(X_train_sc, y_train)
-y_pred_sc = model_sc.predict(X_test_sc)
+results = []
 
-acc_sc = accuracy_score(y_test, y_pred_sc)
-cm_sc = confusion_matrix(y_test, y_pred_sc)
+trained_models = {}
 
-# 2️⃣ Normalizer Model
-sc2 = Normalizer()
-X_train_nm = sc2.fit_transform(X_train)
-X_test_nm = sc2.transform(X_test)
+# ================= TRAIN ALL MODELS =================
+for scaler_name, scaler in scalers.items():
+    for model_name, model in models.items():
 
-model_nm = LogisticRegression(max_iter=1000)
-model_nm.fit(X_train_nm, y_train)
-y_pred_nm = model_nm.predict(X_test_nm)
+        X_train_temp = X_train.copy()
+        X_test_temp = X_test.copy()
 
-acc_nm = accuracy_score(y_test, y_pred_nm)
-cm_nm = confusion_matrix(y_test, y_pred_nm)
+        if scaler:
+            X_train_temp = scaler.fit_transform(X_train_temp)
+            X_test_temp = scaler.transform(X_test_temp)
 
-# 3️⃣ Without Scaling Model
-model_ns = LogisticRegression(max_iter=1000)
-model_ns.fit(X_train, y_train)
-y_pred_ns = model_ns.predict(X_test)
+        model.fit(X_train_temp, y_train)
+        y_pred = model.predict(X_test_temp)
 
-acc_ns = accuracy_score(y_test, y_pred_ns)
-cm_ns = confusion_matrix(y_test, y_pred_ns)
+        acc = accuracy_score(y_test, y_pred)
 
-# ================= SIDEBAR =================
+        results.append({
+            "Scaler": scaler_name,
+            "Model": model_name,
+            "Accuracy": acc
+        })
 
-st.sidebar.title("⚙️ Select Model")
+        trained_models[(scaler_name, model_name)] = (model, scaler)
 
-model_option = st.sidebar.selectbox(
-    "Choose Model",
-    ["StandardScaler", "Normalizer", "No Scaling"]
-)
+# ================= RESULTS TABLE =================
+results_df = pd.DataFrame(results)
 
-# ================= COMPARISON TABLE =================
+st.markdown("## 📊 Model Comparison Table")
+st.dataframe(results_df.sort_values(by="Accuracy", ascending=False))
 
-st.markdown("## 📊 Model Comparison")
-
-comparison_df = pd.DataFrame({
-    "Model": ["StandardScaler", "Normalizer", "No Scaling"],
-    "Accuracy": [acc_sc, acc_nm, acc_ns]
-})
-
-st.dataframe(comparison_df)
-
-st.bar_chart(comparison_df.set_index("Model"))
-
-# ================= SELECTED MODEL DETAILS =================
-
-st.markdown("## 🔍 Selected Model Details")
-
-if model_option == "StandardScaler":
-    st.subheader("StandardScaler Model")
-    st.write(f"Accuracy: {acc_sc:.2f}")
-    st.write("Confusion Matrix:")
-    st.dataframe(cm_sc)
-
-elif model_option == "Normalizer":
-    st.subheader("Normalizer Model")
-    st.write(f"Accuracy: {acc_nm:.2f}")
-    st.write("Confusion Matrix:")
-    st.dataframe(cm_nm)
-
-elif model_option == "No Scaling":
-    st.subheader("No Scaling Model")
-    st.write(f"Accuracy: {acc_ns:.2f}")
-    st.write("Confusion Matrix:")
-    st.dataframe(cm_ns)
+st.markdown("## 📈 Accuracy Comparison Chart")
+st.bar_chart(results_df.set_index(["Scaler", "Model"]))
 
 # ================= BEST MODEL =================
-
-best_model = comparison_df.loc[comparison_df['Accuracy'].idxmax()]
+best_row = results_df.loc[results_df['Accuracy'].idxmax()]
 
 st.markdown("## 🏆 Best Model")
-
 st.success(f"""
-Best Model: {best_model['Model']}  
-Accuracy: {best_model['Accuracy']:.2f}
+Scaler: {best_row['Scaler']}  
+Model: {best_row['Model']}  
+Accuracy: {best_row['Accuracy']:.2f}
 """)
 
-# ================= PREDICTION =================
+# ================= SIDEBAR =================
+st.sidebar.title("⚙️ Select Model")
 
-st.markdown("## 🔮 Make Prediction")
+selected_scaler = st.sidebar.selectbox("Select Scaler", list(scalers.keys()))
+selected_model = st.sidebar.selectbox("Select Model", list(models.keys()))
+
+model, scaler = trained_models[(selected_scaler, selected_model)]
+
+# ================= MODEL DETAILS =================
+st.markdown("## 🔍 Selected Model Details")
+
+X_test_temp = X_test.copy()
+if scaler:
+    X_test_temp = scaler.transform(X_test_temp)
+
+y_pred_selected = model.predict(X_test_temp)
+cm = confusion_matrix(y_test, y_pred_selected)
+
+st.write(f"Accuracy: {accuracy_score(y_test, y_pred_selected):.2f}")
+st.write("Confusion Matrix:")
+st.dataframe(cm)
+
+# ================= MANUAL PREDICTION =================
+st.markdown("## 🔮 Manual Prediction")
 
 f1 = st.number_input("Feature 1")
 f2 = st.number_input("Feature 2")
 
 if st.button("Predict"):
-
     data = np.array([[f1, f2]])
 
-    if model_option == "StandardScaler":
-        data = sc1.transform(data)
-        result = model_sc.predict(data)
+    if scaler:
+        data = scaler.transform(data)
 
-    elif model_option == "Normalizer":
-        data = sc2.transform(data)
-        result = model_nm.predict(data)
-
-    else:
-        result = model_ns.predict(data)
-
+    result = model.predict(data)
     st.success(f"Prediction: {result[0]}")
+
+# ================= FILE UPLOAD =================
+st.markdown("## 📁 Upload Your Own Dataset")
+
+uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+
+if uploaded_file is not None:
+    data = pd.read_csv(uploaded_file)
+
+    st.write("Uploaded Data Preview", data.head())
+
+    try:
+        # Assume last column is target (optional)
+        X_new = data.iloc[:, :-1].values
+
+        if scaler:
+            X_new = scaler.transform(X_new)
+
+        preds = model.predict(X_new)
+        data['Prediction'] = preds
+
+        st.write("✅ Prediction Result", data)
+
+        csv = data.to_csv(index=False).encode('utf-8')
+
+        st.download_button(
+            "📥 Download Predictions",
+            csv,
+            "predicted_data.csv",
+            "text/csv"
+        )
+
+    except Exception as e:
+        st.error("⚠️ Ensure your dataset has correct feature columns")
 
 # ================= FOOTER =================
 st.markdown("---")
