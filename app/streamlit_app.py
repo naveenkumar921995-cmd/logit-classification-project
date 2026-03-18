@@ -3,13 +3,17 @@ import pickle
 import pandas as pd
 import numpy as np
 import streamlit as st
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import Normalizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, accuracy_score
 
-st.title("📊 Logistic Regression Classification App")
+st.set_page_config(page_title="ML Classification App", layout="wide")
+
+st.title("🚀 Logistic Regression Dashboard")
+st.markdown("### 📊 Model Analysis + Prediction App")
 
 # ================= TRAIN MODEL =================
 
@@ -43,23 +47,38 @@ def train_model():
 
 model, sc, cm, accuracy, train_acc, test_acc = train_model()
 
-# ================= SHOW METRICS =================
+# ================= METRICS =================
 
-st.subheader("📈 Model Performance")
+st.markdown("## 📈 Model Performance")
 
-st.write("Confusion Matrix:")
-st.write(cm)
+col1, col2, col3 = st.columns(3)
 
-st.write(f"Accuracy: {accuracy:.2f}")
-st.write(f"Training Accuracy (Bias): {train_acc:.2f}")
-st.write(f"Testing Accuracy (Variance): {test_acc:.2f}")
+col1.metric("Accuracy", f"{accuracy:.2f}")
+col2.metric("Training Accuracy", f"{train_acc:.2f}")
+col3.metric("Testing Accuracy", f"{test_acc:.2f}")
 
-# ================= USER INPUT =================
+# ================= CONFUSION MATRIX =================
 
-st.subheader("🔮 Single Prediction")
+st.markdown("## 🔍 Confusion Matrix")
 
-f1 = st.number_input("Feature 1")
-f2 = st.number_input("Feature 2")
+fig, ax = plt.subplots()
+ax.imshow(cm)
+ax.set_title("Confusion Matrix")
+
+for i in range(len(cm)):
+    for j in range(len(cm[0])):
+        ax.text(j, i, cm[i, j], ha="center", va="center")
+
+st.pyplot(fig)
+
+# ================= SINGLE PREDICTION =================
+
+st.markdown("## 🔮 Single Prediction")
+
+col1, col2 = st.columns(2)
+
+f1 = col1.number_input("Feature 1")
+f2 = col2.number_input("Feature 2")
 
 if st.button("Predict"):
     data = np.array([[f1, f2]])
@@ -67,24 +86,37 @@ if st.button("Predict"):
     result = model.predict(data)
     st.success(f"Prediction: {result[0]}")
 
-# ================= FUTURE DATASET =================
+# ================= FILE UPLOAD =================
 
-st.subheader("📁 Batch Prediction (final1.csv)")
+st.markdown("## 📁 Upload CSV for Batch Prediction")
 
-if st.button("Run Batch Prediction"):
-    dataset1 = pd.read_csv("data/final1.csv")
-    d2 = dataset1.copy()
+uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
-    X_new = dataset1.iloc[:, [3, 4]].values
+if uploaded_file is not None:
+    data = pd.read_csv(uploaded_file)
+    st.write("Uploaded Data", data)
 
-    # IMPORTANT: use SAME scaler (Normalizer)
-    X_new = sc.transform(X_new)
+    try:
+        X_new = data.iloc[:, [3, 4]].values
+        X_new = sc.transform(X_new)
 
-    preds = model.predict(X_new)
-    d2['y_pred1'] = preds
+        preds = model.predict(X_new)
+        data['Prediction'] = preds
 
-    st.write("Predicted Data:")
-    st.dataframe(d2)
+        st.write("✅ Prediction Result", data)
 
-    d2.to_csv("output/final2.csv", index=False)
-    st.success("File saved as output/final2.csv")
+        csv = data.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            "📥 Download Predictions",
+            csv,
+            "predicted_data.csv",
+            "text/csv"
+        )
+
+    except Exception as e:
+        st.error("⚠️ Ensure your CSV has correct column format")
+
+# ================= FOOTER =================
+
+st.markdown("---")
+st.markdown("👨‍💻 Developed by Naveen Kumar")
