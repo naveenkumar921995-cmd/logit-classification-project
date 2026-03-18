@@ -75,8 +75,10 @@ st.markdown("## 📊 Model Comparison Table")
 st.dataframe(results_df.sort_values(by="Accuracy", ascending=False))
 
 st.markdown("## 📈 Accuracy Comparison Chart")
-chart_data = results_df.copy()
-chart_data["Model_Config"] = chart_data["Scaler"] + " | " + chart_data["Model"]
+
+pivot_df = results_df.pivot(index="Model", columns="Scaler", values="Accuracy")
+
+st.bar_chart(pivot_df)
 
 st.bar_chart(chart_data.set_index("Model_Config")["Accuracy"])
 
