@@ -81,7 +81,7 @@ pivot_df = results_df.pivot(index="Model", columns="Scaler", values="Accuracy")
 
 st.bar_chart(pivot_df)
 # Then plot
-st.bar_chart(chart_data.set_index("Model_Config")["Accuracy"])
+
 # ================= BEST MODEL =================
 best_row = results_df.loc[results_df['Accuracy'].idxmax()]
 
