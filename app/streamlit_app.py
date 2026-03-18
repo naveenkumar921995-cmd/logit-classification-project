@@ -1,18 +1,33 @@
-import streamlit as st
-import numpy as np
+import os
 import pickle
+import pandas as pd
+import numpy as np
+import streamlit as st
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import Normalizer
 
-# Load model
-model, sc = pickle.load(open('models/logistic_model.pkl', 'rb'))
+MODEL_PATH = "models/logistic_model.pkl"
 
-st.title("Logistic Regression Predictor")
+# Train model if not exists
+if not os.path.exists(MODEL_PATH):
+    st.warning("Model not found. Training new model...")
 
-# Inputs
-feature1 = st.number_input("Feature 1")
-feature2 = st.number_input("Feature 2")
+    dataset = pd.read_csv("data/logit_classification.csv")
+    X = dataset.iloc[:, [2, 3]].values
+    y = dataset.iloc[:, -1].values
 
-if st.button("Predict"):
-    data = np.array([[feature1, feature2]])
-    data = sc.transform(data)
-    result = model.predict(data)
-    st.success(f"Prediction: {result[0]}")
+    sc = Normalizer()
+    X = sc.fit_transform(X)
+
+    model = LogisticRegression()
+    model.fit(X, y)
+
+    os.makedirs("models", exist_ok=True)
+    with open(MODEL_PATH, "wb") as f:
+        pickle.dump((model, sc), f)
+
+    st.success("Model trained & saved successfully ✅")
+
+# Load model safely
+with open(MODEL_PATH, "rb") as f:
+    model, sc = pickle.load(f)
