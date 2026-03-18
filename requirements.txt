@@ -1,6 +1,7 @@
+python==3.10
+streamlit
+altair==4.2.2
 pandas
 numpy
 scikit-learn
-streamlit
 matplotlib
-altair==4.2.2
