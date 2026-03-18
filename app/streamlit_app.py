@@ -75,7 +75,10 @@ st.markdown("## 📊 Model Comparison Table")
 st.dataframe(results_df.sort_values(by="Accuracy", ascending=False))
 
 st.markdown("## 📈 Accuracy Comparison Chart")
-st.bar_chart(results_df.set_index(["Scaler", "Model"]))
+chart_data = results_df.copy()
+chart_data["Model_Config"] = chart_data["Scaler"] + " | " + chart_data["Model"]
+
+st.bar_chart(chart_data.set_index("Model_Config")["Accuracy"])
 
 # ================= BEST MODEL =================
 best_row = results_df.loc[results_df['Accuracy'].idxmax()]
